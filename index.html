@@ -1,588 +1,1036 @@
-import React, { useMemo, useRef, useState } from "react";
-import { motion } from "framer-motion";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  CartesianGrid,
-  LineChart,
-  Line,
-  PieChart,
-  Pie,
-  Cell,
-  AreaChart,
-  Area,
-  ReferenceLine,
-} from "recharts";
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Datos de ventas de Acopanchi</title>
 
-const money = (value) =>
-  new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 2,
-  }).format(value);
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700;900&display=swap" rel="stylesheet" />
 
-const percent = (value) => `${value.toFixed(1)}%`;
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-const monthlySales = [
-  { mes: "Enero", ventas: 317.75, variacion: null },
-  { mes: "Febrero", ventas: 500.5, variacion: 57.5 },
-  { mes: "Marzo", ventas: 337.5, variacion: -32.6 },
-  { mes: "Abril", ventas: 420.95, variacion: 24.7 },
-  { mes: "Mayo*", ventas: 431.9, variacion: 2.6 },
-];
+  <style>
+    :root {
+      --navy: #100135;
+      --purple: #640FEA;
+      --green: #0FFC7E;
+      --light: #DFE4EA;
+      --gray: #B8BEC4;
+      --black: #000000;
+      --white: #FFFFFF;
+    }
 
-const categorySales = [
-  { categoria: "Paño pancho / paños", ventas: 543, participacion: 27.0 },
-  { categoria: "Prendas", ventas: 526, participacion: 26.2 },
-  { categoria: "Bolsos / bolsitas", ventas: 217, participacion: 10.8 },
-  { categoria: "Caminos de mesa", ventas: 189, participacion: 9.4 },
-  { categoria: "Individuales / manteles", ventas: 160, participacion: 8.0 },
-  { categoria: "Comisión por venta de socias", ventas: 106.35, participacion: 5.3 },
-];
+    * {
+      box-sizing: border-box;
+    }
 
-const priceRanges = [
-  { rango: "$0-$5", transacciones: 58, ventas: 184.1, participacion: 9.2 },
-  { rango: "$5.01-$10", transacciones: 31, ventas: 245, participacion: 12.2 },
-  { rango: "$10.01-$20", transacciones: 24, ventas: 385.5, participacion: 19.2 },
-  { rango: "$20.01-$35", transacciones: 28, ventas: 782, participacion: 38.9 },
-  { rango: "+$35", transacciones: 7, ventas: 412, participacion: 20.5 },
-];
+    html {
+      scroll-behavior: smooth;
+    }
 
-const dailySignal = [
-  { indicador: "Promedio", valor: 61.07 },
-  { indicador: "Mediana", valor: 32.5 },
-  { indicador: "Día más alto", valor: 308.5 },
-];
+    body {
+      margin: 0;
+      background: var(--white);
+      color: var(--navy);
+      font-family: "Lato", Arial, sans-serif;
+    }
 
-const summary = {
-  total: 2008.6,
-  ventasProductoServicio: 1902.25,
-  consigna: 106.35,
-  transacciones: 148,
-  ticketPromedio: 13.57,
-  ticketLimpio: 15.85,
-  promedioMensual: 401.72,
-  medianaMensual: 420.95,
-  desviacionMensual: 74.52,
-  cvMensual: 18.6,
-  rangoMensual: 182.75,
-  diasActivos: 32,
-  promedioDiaActivo: 61.07,
-  medianaDiaActivo: 32.5,
-  cvDiario: 115.1,
-  ventaMayor20Participacion: 59.4,
-  ventaMayor20Transacciones: 23.6,
-  top2Participacion: 53.2,
-  top5Participacion: 81.4,
-  gastoEnero: 188,
-  netoEnero: 129.75,
-  gastoIngresoEnero: 59.2,
-};
+    main {
+      min-height: 100vh;
+      padding: 48px 40px;
+    }
 
-const BRAND = {
-  navy: "#100135",
-  purple: "#640FEA",
-  green: "#0FFC7E",
-  light: "#DFE4EA",
-  gray: "#B8BEC4",
-  black: "#000000",
-  white: "#FFFFFF",
-};
+    .page {
+      max-width: 1280px;
+      margin: 0 auto;
+    }
 
-const COLORS = [BRAND.navy, BRAND.purple, BRAND.green, BRAND.gray, BRAND.light, "#000000"];
+    .hero {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 48px;
+      align-items: end;
+      padding-bottom: 40px;
+      margin-bottom: 48px;
+      border-bottom: 1px solid var(--gray);
+    }
 
-const LOGO_ARMANDO = "https://res.cloudinary.com/dul66qlpq/image/upload/v1758995973/logo_armando_pug17v.svg";
+    .eyebrow {
+      margin: 0 0 16px;
+      color: var(--purple);
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: 0.26em;
+      text-transform: uppercase;
+    }
 
-function Metric({ label, value, note }) {
-  return (
-    <div className="border-t border-[#DFE4EA] pt-5">
-      <p className="text-sm font-medium text-[#100135]/55">{label}</p>
-      <p className="mt-2 text-3xl font-bold tracking-[-0.03em] text-[#100135] md:text-4xl">{value}</p>
-      <p className="mt-2 max-w-xs text-sm leading-relaxed text-[#100135]/55">{note}</p>
-    </div>
-  );
-}
+    h1 {
+      max-width: 980px;
+      margin: 0;
+      color: var(--navy);
+      font-size: clamp(54px, 8vw, 116px);
+      line-height: 0.88;
+      font-weight: 900;
+      letter-spacing: -0.065em;
+    }
 
-function SectionTitle({ eyebrow, title, text, meta }) {
-  return (
-    <div className="mb-8 flex flex-col justify-between gap-4 border-t border-[#B8BEC4] pt-7 md:flex-row md:items-end">
-      <div>
-        <p className="mb-3 text-xs font-bold uppercase tracking-[0.24em] text-[#640FEA]">{eyebrow}</p>
-        <h2 className="max-w-3xl text-3xl font-extrabold tracking-[-0.04em] text-[#100135] md:text-4xl">{title}</h2>
-        {text && <p className="mt-3 max-w-2xl text-sm leading-relaxed text-[#100135]/70">{text}</p>}
-      </div>
-      {meta && <p className="text-sm font-bold text-[#100135]">{meta}</p>}
-    </div>
-  );
-}
+    .intro {
+      max-width: 760px;
+      margin: 24px 0 0;
+      color: rgba(16, 1, 53, 0.7);
+      font-size: 18px;
+      line-height: 1.6;
+    }
 
-function MinimalTooltip({ active, payload, label }) {
-  if (!active || !payload?.length) return null;
+    .note {
+      margin: 12px 0 0;
+      color: rgba(16, 1, 53, 0.55);
+      font-size: 14px;
+    }
 
-  return (
-    <div className="border border-[#DFE4EA] bg-white px-3 py-2 text-sm shadow-sm">
-      <p className="mb-1 font-bold text-[#100135]">{label}</p>
-      {payload.map((item, index) => {
-        const isTransaction = item.name?.toLowerCase().includes("transacciones");
-        const isPercent = item.name?.toLowerCase().includes("variación") || item.dataKey === "participacion";
-        const formatted = isTransaction
-          ? item.value
-          : isPercent
-          ? `${Number(item.value).toFixed(1)}%`
-          : money(Number(item.value));
+    .tabs {
+      display: inline-flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      width: fit-content;
+      padding: 4px;
+      border: 1px solid var(--gray);
+      background: var(--light);
+    }
 
-        return (
-          <p key={index} className="text-[#100135]/70">
-            {item.name}: {formatted}
-          </p>
-        );
-      })}
-    </div>
-  );
-}
+    .tab-button {
+      border: 0;
+      background: var(--white);
+      color: var(--navy);
+      padding: 12px 20px;
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 900;
+      cursor: pointer;
+      transition: 160ms ease;
+    }
 
-function ChartBlock({ children }) {
-  return <div className="h-[330px] w-full">{children}</div>;
-}
+    .tab-button:hover {
+      background: var(--light);
+      color: var(--purple);
+    }
 
-function ChartExplanation({ title = "Cómo leer este gráfico", children }) {
-  return (
-    <details className="group mt-5 border-t border-[#DFE4EA] pt-4">
-      <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-sm font-bold text-[#100135] marker:hidden">
-        <span>{title}</span>
-        <span className="grid h-7 w-7 place-items-center border border-[#B8BEC4] text-base leading-none transition group-open:rotate-45">
-          +
-        </span>
-      </summary>
-      <div className="mt-4 max-w-3xl space-y-3 text-sm leading-7 text-[#100135]/70">
-        {children}
-      </div>
-    </details>
-  );
-}
+    .tab-button.active {
+      background: var(--purple);
+      color: var(--white);
+      box-shadow: 0 6px 16px rgba(100, 15, 234, 0.18);
+    }
 
-function DataRow({ label, value, note }) {
-  return (
-    <div className="grid grid-cols-[1fr_auto] gap-4 border-b border-[#DFE4EA] py-4">
-      <div>
-        <p className="font-bold text-[#100135]">{label}</p>
-        {note && <p className="mt-1 text-sm leading-relaxed text-[#100135]/55">{note}</p>}
-      </div>
-      <p className="text-right text-lg font-bold text-[#100135]">{value}</p>
-    </div>
-  );
-}
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 32px;
+      margin-bottom: 56px;
+    }
 
-export default function DashboardAcopanchi() {
-  const [view, setView] = useState("general");
-  const contentRef = useRef(null);
+    .metric {
+      padding-top: 20px;
+      border-top: 1px solid var(--light);
+    }
 
-  const handleViewChange = (newView) => {
-    setView(newView);
-    window.setTimeout(() => {
-      contentRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }, 80);
-  };
+    .metric-label {
+      margin: 0;
+      color: rgba(16, 1, 53, 0.55);
+      font-size: 14px;
+      font-weight: 700;
+    }
 
-  const bestMonth = useMemo(() => monthlySales.reduce((a, b) => (a.ventas > b.ventas ? a : b)), []);
-  const topCategory = useMemo(() => categorySales[0], []);
+    .metric-value {
+      margin: 8px 0 0;
+      color: var(--navy);
+      font-size: clamp(32px, 4vw, 44px);
+      font-weight: 900;
+      letter-spacing: -0.03em;
+      line-height: 1;
+    }
 
-  const tabs = [
-    { id: "general", label: "General" },
-    { id: "productos", label: "Productos" },
-    { id: "variacion", label: "Variación" },
-  ];
+    .metric-note {
+      max-width: 260px;
+      margin: 10px 0 0;
+      color: rgba(16, 1, 53, 0.55);
+      font-size: 14px;
+      line-height: 1.55;
+    }
 
-  return (
-    <main className="min-h-screen bg-white px-5 py-8 text-[#100135] md:px-10 md:py-12" style={{ fontFamily: "Lato, Arial, sans-serif" }}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Lato:wght@400;700;900&display=swap');`}</style>
-      <div className="mx-auto max-w-7xl">
-        <header className="mb-12 grid gap-8 border-b border-[#B8BEC4] pb-10 lg:grid-cols-[1fr_auto] lg:items-end">
-          <div>
-            <p className="mb-4 text-xs font-bold uppercase tracking-[0.26em] text-[#640FEA]">ACOPANCHI · Ventas enero-mayo 2026</p>
-            <h1 className="max-w-5xl text-5xl font-black tracking-[-0.065em] text-[#100135] md:text-7xl lg:text-8xl">
-              Datos de ventas de Acopanchi
-            </h1>
-            <p className="mt-6 max-w-3xl text-base leading-7 text-[#100135]/70 md:text-lg">
-              Una vista simple para entender cuánto vende la cooperativa, qué productos sostienen el ingreso y dónde se concentra el valor comercial.
-            </p>
-            <p className="mt-3 text-sm text-[#100135]/55">* Mayo incluye registros hasta el día 12.</p>
-          </div>
+    .view {
+      display: none;
+      animation: fadeIn 240ms ease both;
+    }
 
-          <nav className="inline-flex w-fit flex-wrap gap-2 border border-[#B8BEC4] bg-[#DFE4EA] p-1">
-            {tabs.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => handleViewChange(tab.id)}
-                className={`px-5 py-3 text-sm font-bold transition-colors ${
-                  view === tab.id
-                    ? "bg-[#640FEA] text-white shadow-sm"
-                    : "bg-white text-[#100135] hover:bg-[#DFE4EA] hover:text-[#640FEA]"
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </nav>
-        </header>
+    .view.active {
+      display: block;
+    }
 
-        <section className="mb-14 grid gap-8 md:grid-cols-2 xl:grid-cols-4">
-          <Metric
-            label="Ingreso total"
-            value={money(summary.total)}
-            note="Total consolidado del período analizado."
-          />
-          <Metric
-            label="Promedio mensual"
-            value={money(summary.promedioMensual)}
-            note={`Mediana mensual: ${money(summary.medianaMensual)}.`}
-          />
-          <Metric
-            label="Ticket promedio"
-            value={money(summary.ticketPromedio)}
-            note={`Sin comisión por venta de socias: ${money(summary.ticketLimpio)}.`}
-          />
-          <Metric
-            label="Transacciones"
-            value={summary.transacciones}
-            note={`${summary.diasActivos} días activos de venta.`}
-          />
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    #content {
+      scroll-margin-top: 32px;
+    }
+
+    .section {
+      margin-bottom: 72px;
+    }
+
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      gap: 32px;
+      align-items: flex-end;
+      padding-top: 28px;
+      margin-bottom: 32px;
+      border-top: 1px solid var(--gray);
+    }
+
+    .section-title {
+      max-width: 780px;
+      margin: 0;
+      color: var(--navy);
+      font-size: clamp(32px, 4vw, 48px);
+      line-height: 1;
+      font-weight: 900;
+      letter-spacing: -0.04em;
+    }
+
+    .section-text {
+      max-width: 680px;
+      margin: 14px 0 0;
+      color: rgba(16, 1, 53, 0.7);
+      font-size: 14px;
+      line-height: 1.7;
+    }
+
+    .meta {
+      margin: 0;
+      white-space: nowrap;
+      color: var(--navy);
+      font-size: 14px;
+      font-weight: 900;
+    }
+
+    .chart-wrapper {
+      height: 330px;
+      width: 100%;
+    }
+
+    .two-column {
+      display: grid;
+      grid-template-columns: 1.2fr 0.8fr;
+      gap: 48px;
+      align-items: center;
+    }
+
+    .two-equal {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 48px;
+    }
+
+    .category-layout {
+      display: grid;
+      grid-template-columns: 1.3fr 0.7fr;
+      gap: 48px;
+    }
+
+    .mini-metrics {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 24px;
+    }
+
+    details {
+      margin-top: 20px;
+      padding-top: 16px;
+      border-top: 1px solid var(--light);
+    }
+
+    summary {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      color: var(--navy);
+      font-size: 14px;
+      font-weight: 900;
+      list-style: none;
+      cursor: pointer;
+    }
+
+    summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .plus {
+      display: grid;
+      place-items: center;
+      width: 28px;
+      height: 28px;
+      border: 1px solid var(--gray);
+      font-size: 17px;
+      line-height: 1;
+      transition: transform 160ms ease;
+    }
+
+    details[open] .plus {
+      transform: rotate(45deg);
+    }
+
+    .details-content {
+      max-width: 760px;
+      margin-top: 16px;
+      color: rgba(16, 1, 53, 0.7);
+      font-size: 14px;
+      line-height: 1.75;
+    }
+
+    .details-content p {
+      margin: 0 0 12px;
+    }
+
+    .table-list {
+      border-top: 1px solid var(--gray);
+    }
+
+    .data-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 16px;
+      padding: 16px 0;
+      border-bottom: 1px solid var(--light);
+    }
+
+    .data-row-name {
+      margin: 0;
+      color: var(--navy);
+      font-weight: 900;
+    }
+
+    .data-row-note {
+      margin: 4px 0 0;
+      color: rgba(16, 1, 53, 0.55);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .data-row-value {
+      margin: 0;
+      color: var(--navy);
+      text-align: right;
+      font-size: 18px;
+      font-weight: 900;
+    }
+
+    footer {
+      margin-top: 64px;
+      padding-top: 24px;
+      border-top: 1px solid var(--gray);
+      color: rgba(16, 1, 53, 0.7);
+      font-size: 14px;
+      line-height: 1.7;
+    }
+
+    footer strong {
+      color: var(--navy);
+      font-weight: 900;
+    }
+
+    .logo-footer {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 40px;
+      padding-bottom: 8px;
+    }
+
+    .logo-footer img {
+      width: auto;
+      height: 80px;
+    }
+
+    @media (max-width: 980px) {
+      main {
+        padding: 32px 22px;
+      }
+
+      .hero {
+        grid-template-columns: 1fr;
+      }
+
+      .metrics-grid,
+      .two-column,
+      .two-equal,
+      .category-layout,
+      .mini-metrics {
+        grid-template-columns: 1fr;
+      }
+
+      .section-header {
+        display: block;
+      }
+
+      .meta {
+        margin-top: 16px;
+      }
+
+      .logo-footer img {
+        height: 64px;
+      }
+    }
+
+    @media (max-width: 560px) {
+      .chart-wrapper {
+        height: 280px;
+      }
+
+      .tabs {
+        width: 100%;
+      }
+
+      .tab-button {
+        flex: 1;
+        padding: 12px 10px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="page">
+      <header class="hero">
+        <div>
+          <p class="eyebrow">ACOPANCHI · Ventas enero-mayo 2026</p>
+          <h1>Datos de ventas de Acopanchi</h1>
+          <p class="intro">Una vista simple para entender cuánto vende la cooperativa, qué productos sostienen el ingreso y dónde se concentra el valor comercial.</p>
+          <p class="note">* Mayo incluye registros hasta el día 12.</p>
+        </div>
+
+        <nav class="tabs" aria-label="Secciones del dashboard">
+          <button class="tab-button active" data-view="general">General</button>
+          <button class="tab-button" data-view="productos">Productos</button>
+          <button class="tab-button" data-view="variacion">Variación</button>
+        </nav>
+      </header>
+
+      <section class="metrics-grid" aria-label="Métricas principales">
+        <article class="metric">
+          <p class="metric-label">Ingreso total</p>
+          <p class="metric-value">$2,008.60</p>
+          <p class="metric-note">Total consolidado del período analizado.</p>
+        </article>
+
+        <article class="metric">
+          <p class="metric-label">Promedio mensual</p>
+          <p class="metric-value">$401.72</p>
+          <p class="metric-note">Mediana mensual: $420.95.</p>
+        </article>
+
+        <article class="metric">
+          <p class="metric-label">Ticket promedio</p>
+          <p class="metric-value">$13.57</p>
+          <p class="metric-note">Sin comisión por venta de socias: $15.85.</p>
+        </article>
+
+        <article class="metric">
+          <p class="metric-label">Transacciones</p>
+          <p class="metric-value">148</p>
+          <p class="metric-note">32 días activos de venta.</p>
+        </article>
+      </section>
+
+      <div id="content">
+        <section id="general" class="view active">
+          <article class="section">
+            <div class="section-header">
+              <div>
+                <p class="eyebrow">Comportamiento mensual</p>
+                <h2 class="section-title">La base mensual ronda los $400</h2>
+                <p class="section-text">El movimiento mensual no es completamente estable, pero tampoco muestra una variación extrema. Febrero es el punto alto del período.</p>
+              </div>
+              <p class="meta">CV mensual: 18.6%</p>
+            </div>
+
+            <div class="chart-wrapper">
+              <canvas id="monthlySalesChart"></canvas>
+            </div>
+
+            <details>
+              <summary>Cómo leer este gráfico <span class="plus">+</span></summary>
+              <div class="details-content">
+                <p>Este gráfico muestra cuánto ingresó ACOPANCHI en cada mes. La línea punteada marca el promedio mensual: $401.72. Cuando una barra queda por encima de esa línea, ese mes vendió más que el promedio del período.</p>
+                <p>Febrero fue el mes más alto con $500.50. Enero fue el más bajo con $317.75. La diferencia entre el mes más alto y el más bajo es de $182.75.</p>
+                <p>El coeficiente de variación mensual es 18.6%. En términos simples: hay cambios entre meses, pero no una inestabilidad extrema. La cooperativa parece tener una base cercana a los $401.72 mensuales.</p>
+              </div>
+            </details>
+          </article>
+
+          <article class="section two-column">
+            <div>
+              <div class="section-header">
+                <div>
+                  <p class="eyebrow">Tipo de ingreso</p>
+                  <h2 class="section-title">La venta directa es el centro</h2>
+                  <p class="section-text">El ingreso por producto o servicio explica casi todo el movimiento económico. La comisión por venta de socias funciona como ingreso complementario.</p>
+                </div>
+              </div>
+
+              <div class="mini-metrics">
+                <article class="metric">
+                  <p class="metric-label">Producto / servicio</p>
+                  <p class="metric-value">$1,902.25</p>
+                  <p class="metric-note">Fuente principal de ingreso.</p>
+                </article>
+
+                <article class="metric">
+                  <p class="metric-label">Comisión por venta de socias</p>
+                  <p class="metric-value">$106.35</p>
+                  <p class="metric-note">Porcentaje que la cooperativa cobra a socias que venden sus productos ahí.</p>
+                </article>
+              </div>
+            </div>
+
+            <div>
+              <div class="chart-wrapper">
+                <canvas id="incomeTypeChart"></canvas>
+              </div>
+
+              <details>
+                <summary>Cómo leer este gráfico <span class="plus">+</span></summary>
+                <div class="details-content">
+                  <p>La mayor parte del ingreso viene de ventas de productos o servicios: $1,902.25. Eso significa que el desempeño de la cooperativa depende principalmente de lo que logra vender de forma directa.</p>
+                  <p>La comisión por venta de socias suma $106.35. Este dato representa el porcentaje que la cooperativa cobra a las socias que desean vender sus productos en el punto de venta. Es un ingreso útil, pero no es el motor económico principal del período.</p>
+                </div>
+              </details>
+            </div>
+          </article>
         </section>
 
-        <div ref={contentRef} className="scroll-mt-8">
-        {view === "general" && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-16">
-            <section>
-              <SectionTitle
-                eyebrow="Comportamiento mensual"
-                title="La base mensual ronda los $400"
-                text="El movimiento mensual no es completamente estable, pero tampoco muestra una variación extrema. Febrero es el punto alto del período."
-                meta={`CV mensual: ${percent(summary.cvMensual)}`}
-              />
-
-              <ChartBlock>
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={monthlySales} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                    <CartesianGrid stroke={BRAND.light} vertical={false} />
-                    <XAxis dataKey="mes" tickLine={false} axisLine={false} tick={{ fill: BRAND.navy, fontSize: 12 }} />
-                    <YAxis tickFormatter={(v) => `$${v}`} tickLine={false} axisLine={false} tick={{ fill: BRAND.navy, fontSize: 12 }} />
-                    <Tooltip content={<MinimalTooltip />} cursor={{ fill: "#DFE4EA" }} />
-                    <ReferenceLine
-                      y={summary.promedioMensual}
-                      stroke={BRAND.purple}
-                      strokeDasharray="4 4"
-                      label={{ value: "Promedio", position: "insideTopRight", fill: BRAND.purple, fontSize: 12 }}
-                    />
-                    <Bar name="Ventas" dataKey="ventas" fill={BRAND.navy} radius={[2, 2, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </ChartBlock>
-
-              <ChartExplanation>
-                <p>
-                  Este gráfico muestra cuánto ingresó ACOPANCHI en cada mes. La línea punteada marca el promedio mensual: {money(summary.promedioMensual)}. Cuando una barra queda por encima de esa línea, ese mes vendió más que el promedio del período.
-                </p>
-                <p>
-                  Febrero fue el mes más alto con {money(bestMonth.ventas)}. Enero fue el más bajo con {money(317.75)}. La diferencia entre el mes más alto y el más bajo es de {money(summary.rangoMensual)}.
-                </p>
-                <p>
-                  El coeficiente de variación mensual es {percent(summary.cvMensual)}. En términos simples: hay cambios entre meses, pero no una inestabilidad extrema. La cooperativa parece tener una base cercana a los {money(summary.promedioMensual)} mensuales.
-                </p>
-              </ChartExplanation>
-            </section>
-
-            <section className="grid gap-12 lg:grid-cols-[1.2fr_0.8fr] lg:items-center">
+        <section id="productos" class="view">
+          <article class="section">
+            <div class="section-header">
               <div>
-                <SectionTitle
-                  eyebrow="Tipo de ingreso"
-                  title="La venta directa es el centro"
-                  text="El ingreso por producto o servicio explica casi todo el movimiento económico. La comisión por venta de socias funciona como ingreso complementario."
-                />
+                <p class="eyebrow">Categorías</p>
+                <h2 class="section-title">Dos líneas explican más de la mitad del ingreso</h2>
+                <p class="section-text">La categoría líder es Paño pancho / paños. Junto con prendas, concentra la parte más importante de la venta.</p>
+              </div>
+              <p class="meta">Top 2: 53.2%</p>
+            </div>
 
-                <div className="grid gap-6 md:grid-cols-2">
-                  <Metric
-                    label="Producto / servicio"
-                    value={money(summary.ventasProductoServicio)}
-                    note="Fuente principal de ingreso."
-                  />
-                  <Metric
-                    label="Comisión por venta de socias"
-                    value={money(summary.consigna)}
-                    note="Porcentaje que la cooperativa cobra a socias que venden sus productos ahí."
-                  />
+            <div class="category-layout">
+              <div>
+                <div class="chart-wrapper">
+                  <canvas id="categorySalesChart"></canvas>
                 </div>
+
+                <details>
+                  <summary>Cómo leer este gráfico <span class="plus">+</span></summary>
+                  <div class="details-content">
+                    <p>Este gráfico ordena las principales categorías según el ingreso generado. Paño pancho/paños generó $543.00, equivalente al 27.0% del ingreso. Prendas generó $526.00, equivalente al 26.2%.</p>
+                    <p>Juntas, estas dos líneas representan el 53.2% del ingreso. Eso significa que más de la mitad de las ventas depende de dos categorías, no de todo el catálogo por igual.</p>
+                    <p>En términos comerciales, estas categorías deberían tener prioridad al presentar la oferta, diseñar piezas publicitarias o explicar qué vende mejor ACOPANCHI.</p>
+                  </div>
+                </details>
+              </div>
+
+              <div class="table-list" id="categoryTable"></div>
+            </div>
+          </article>
+
+          <article class="section">
+            <div class="section-header">
+              <div>
+                <p class="eyebrow">Precios</p>
+                <h2 class="section-title">Los productos de más de $20 concentran el valor</h2>
+                <p class="section-text">Los productos baratos generan muchas operaciones, pero el dinero se concentra en rangos medios y altos.</p>
+              </div>
+              <p class="meta">+$20 = 59.4% del ingreso</p>
+            </div>
+
+            <div class="two-equal">
+              <div>
+                <div class="chart-wrapper">
+                  <canvas id="priceRangeAreaChart"></canvas>
+                </div>
+
+                <details>
+                  <summary>Qué significa la concentración por precio <span class="plus">+</span></summary>
+                  <div class="details-content">
+                    <p>La zona más fuerte está en el rango de $20.01 a $35, que generó $782.00. El rango de más de $35 generó $412.00.</p>
+                    <p>Cuando decimos que los productos mayores a $20 concentran el valor, significa que generan el 59.4% del ingreso total, aunque representan solo el 23.6% de las transacciones.</p>
+                    <p>Es decir: no son los productos que más se venden en cantidad, pero sí los que más pesan financieramente. Por eso son relevantes para estrategia comercial, exhibición y comunicación.</p>
+                  </div>
+                </details>
               </div>
 
               <div>
-                <ChartBlock>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={[
-                          { name: "Producto / servicio", value: summary.ventasProductoServicio },
-                          { name: "Comisión por venta de socias", value: summary.consigna },
-                        ]}
-                        dataKey="value"
-                        nameKey="name"
-                        innerRadius={80}
-                        outerRadius={120}
-                        paddingAngle={2}
-                      >
-                        {[BRAND.navy, BRAND.green].map((color) => (
-                          <Cell key={color} fill={color} />
-                        ))}
-                      </Pie>
-                      <Tooltip content={<MinimalTooltip />} />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </ChartBlock>
+                <div class="chart-wrapper">
+                  <canvas id="transactionVsIncomeChart"></canvas>
+                </div>
 
-                <ChartExplanation>
-                  <p>
-                    La mayor parte del ingreso viene de ventas de productos o servicios: {money(summary.ventasProductoServicio)}. Eso significa que el desempeño de la cooperativa depende principalmente de lo que logra vender de forma directa.
-                  </p>
-                  <p>
-                    La comisión por venta de socias suma {money(summary.consigna)}. Este dato representa el porcentaje que la cooperativa cobra a las socias que desean vender sus productos en el punto de venta. Es un ingreso útil, pero no es el motor económico principal del período.
-                  </p>
-                </ChartExplanation>
+                <details>
+                  <summary>Cómo leer transacciones versus ingreso <span class="plus">+</span></summary>
+                  <div class="details-content">
+                    <p>Las barras grises muestran cuántas transacciones hubo en cada rango de precio. Las barras moradas muestran cuánto dinero generó cada rango.</p>
+                    <p>Los rangos bajos tienen más movimiento en cantidad, pero no necesariamente generan más dinero. Por ejemplo, el rango de $0 a $5 tuvo 58 transacciones, pero produjo $184.10.</p>
+                    <p>En cambio, el rango de $20.01 a $35 tuvo menos transacciones, 28, pero produjo $782.00. Esa diferencia explica por qué el ticket medio-alto importa tanto.</p>
+                  </div>
+                </details>
               </div>
-            </section>
-          </motion.div>
-        )}
+            </div>
+          </article>
+        </section>
 
-        {view === "productos" && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-16">
-            <section>
-              <SectionTitle
-                eyebrow="Categorías"
-                title="Dos líneas explican más de la mitad del ingreso"
-                text={`La categoría líder es ${topCategory.categoria}. Junto con prendas, concentra la parte más importante de la venta.`}
-                meta={`Top 2: ${percent(summary.top2Participacion)}`}
-              />
-
-              <div className="grid gap-12 lg:grid-cols-[1.3fr_0.7fr]">
-                <div>
-                  <ChartBlock>
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={categorySales} layout="vertical" margin={{ top: 5, right: 20, left: 40, bottom: 0 }}>
-                        <CartesianGrid stroke={BRAND.light} horizontal={false} />
-                        <XAxis type="number" tickFormatter={(v) => `$${v}`} tickLine={false} axisLine={false} tick={{ fill: BRAND.navy, fontSize: 12 }} />
-                        <YAxis
-                          type="category"
-                          dataKey="categoria"
-                          width={145}
-                          tickLine={false}
-                          axisLine={false}
-                          tick={{ fill: BRAND.purple, fontSize: 12 }}
-                        />
-                        <Tooltip content={<MinimalTooltip />} cursor={{ fill: "#DFE4EA" }} />
-                        <Bar name="Ventas" dataKey="ventas" fill={BRAND.navy} radius={[0, 2, 2, 0]} />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </ChartBlock>
-
-                  <ChartExplanation>
-                    <p>
-                      Este gráfico ordena las principales categorías según el ingreso generado. Paño pancho/paños generó {money(543)}, equivalente al {percent(27.0)} del ingreso. Prendas generó {money(526)}, equivalente al {percent(26.2)}.
-                    </p>
-                    <p>
-                      Juntas, estas dos líneas representan el {percent(summary.top2Participacion)} del ingreso. Eso significa que más de la mitad de las ventas depende de dos categorías, no de todo el catálogo por igual.
-                    </p>
-                    <p>
-                      En términos comerciales, estas categorías deberían tener prioridad al presentar la oferta, diseñar piezas publicitarias o explicar qué vende mejor ACOPANCHI.
-                    </p>
-                  </ChartExplanation>
-                </div>
-
-                <div className="border-t border-[#B8BEC4]">
-                  {categorySales.map((item) => (
-                    <DataRow
-                      key={item.categoria}
-                      label={item.categoria}
-                      value={money(item.ventas)}
-                      note={`${percent(item.participacion)} del ingreso`}
-                    />
-                  ))}
-                </div>
+        <section id="variacion" class="view">
+          <article class="section">
+            <div class="section-header">
+              <div>
+                <p class="eyebrow">Variación</p>
+                <h2 class="section-title">La venta mensual es moderada; la diaria es irregular</h2>
+                <p class="section-text">El mes completo da una lectura relativamente estable. El día a día, en cambio, depende mucho de momentos puntuales de venta.</p>
               </div>
-            </section>
+              <p class="meta">CV diario: 115.1%</p>
+            </div>
 
-            <section>
-              <SectionTitle
-                eyebrow="Precios"
-                title="Los productos de más de $20 concentran el valor"
-                text="Los productos baratos generan muchas operaciones, pero el dinero se concentra en rangos medios y altos."
-                meta={`+$20 = ${percent(summary.ventaMayor20Participacion)} del ingreso`}
-              />
-
-              <div className="grid gap-12 lg:grid-cols-2">
-                <div>
-                  <ChartBlock>
-                    <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={priceRanges} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                        <CartesianGrid stroke={BRAND.light} vertical={false} />
-                        <XAxis dataKey="rango" tickLine={false} axisLine={false} tick={{ fill: BRAND.navy, fontSize: 12 }} />
-                        <YAxis tickFormatter={(v) => `$${v}`} tickLine={false} axisLine={false} tick={{ fill: BRAND.navy, fontSize: 12 }} />
-                        <Tooltip content={<MinimalTooltip />} />
-                        <Area type="monotone" dataKey="ventas" name="Ventas" stroke={BRAND.purple} fill={BRAND.light} strokeWidth={2} />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  </ChartBlock>
-
-                  <ChartExplanation title="Qué significa la concentración por precio">
-                    <p>
-                      La zona más fuerte está en el rango de $20.01 a $35, que generó {money(782)}. El rango de más de $35 generó {money(412)}.
-                    </p>
-                    <p>
-                      Cuando decimos que los productos mayores a $20 concentran el valor, significa que generan el {percent(summary.ventaMayor20Participacion)} del ingreso total, aunque representan solo el {percent(summary.ventaMayor20Transacciones)} de las transacciones.
-                    </p>
-                    <p>
-                      Es decir: no son los productos que más se venden en cantidad, pero sí los que más pesan financieramente. Por eso son relevantes para estrategia comercial, exhibición y comunicación.
-                    </p>
-                  </ChartExplanation>
+            <div class="two-equal">
+              <div>
+                <div class="chart-wrapper">
+                  <canvas id="monthlyVariationChart"></canvas>
                 </div>
 
-                <div>
-                  <ChartBlock>
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={priceRanges} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                        <CartesianGrid stroke={BRAND.light} vertical={false} />
-                        <XAxis dataKey="rango" tickLine={false} axisLine={false} tick={{ fill: BRAND.navy, fontSize: 12 }} />
-                        <YAxis yAxisId="left" tickLine={false} axisLine={false} tick={{ fill: BRAND.navy, fontSize: 12 }} />
-                        <YAxis yAxisId="right" orientation="right" tickFormatter={(v) => `$${v}`} tickLine={false} axisLine={false} tick={{ fill: BRAND.navy, fontSize: 12 }} />
-                        <Tooltip content={<MinimalTooltip />} cursor={{ fill: "#DFE4EA" }} />
-                        <Bar yAxisId="left" dataKey="transacciones" name="Transacciones" fill={BRAND.gray} radius={[2, 2, 0, 0]} />
-                        <Bar yAxisId="right" dataKey="ventas" name="Ventas" fill={BRAND.navy} radius={[2, 2, 0, 0]} />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </ChartBlock>
-
-                  <ChartExplanation title="Cómo leer transacciones versus ingreso">
-                    <p>
-                      Las barras grises muestran cuántas transacciones hubo en cada rango de precio. Las barras negras muestran cuánto dinero generó cada rango.
-                    </p>
-                    <p>
-                      Los rangos bajos tienen más movimiento en cantidad, pero no necesariamente generan más dinero. Por ejemplo, el rango de $0 a $5 tuvo 58 transacciones, pero produjo {money(184.1)}.
-                    </p>
-                    <p>
-                      En cambio, el rango de $20.01 a $35 tuvo menos transacciones, 28, pero produjo {money(782)}. Esa diferencia explica por qué el ticket medio-alto importa tanto.
-                    </p>
-                  </ChartExplanation>
-                </div>
+                <details>
+                  <summary>Qué indica la variación mensual <span class="plus">+</span></summary>
+                  <div class="details-content">
+                    <p>Este gráfico muestra cuánto cambió la venta de un mes al siguiente. Febrero creció 57.5% frente a enero; marzo cayó 32.6% frente a febrero; abril volvió a crecer 24.7%; mayo creció 2.6% frente a abril.</p>
+                    <p>La lectura no debe ser “todo está estable”, sino más precisa: hay oscilación, pero el promedio mensual no se destruye. El movimiento se mantiene alrededor de una base aproximada de $401.72.</p>
+                  </div>
+                </details>
               </div>
-            </section>
-          </motion.div>
-        )}
 
-        {view === "variacion" && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-16">
-            <section>
-              <SectionTitle
-                eyebrow="Variación"
-                title="La venta mensual es moderada; la diaria es irregular"
-                text="El mes completo da una lectura relativamente estable. El día a día, en cambio, depende mucho de momentos puntuales de venta."
-                meta={`CV diario: ${percent(summary.cvDiario)}`}
-              />
-
-              <div className="grid gap-12 lg:grid-cols-2">
-                <div>
-                  <ChartBlock>
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={monthlySales.filter((m) => m.variacion !== null)} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                        <CartesianGrid stroke={BRAND.light} vertical={false} />
-                        <XAxis dataKey="mes" tickLine={false} axisLine={false} tick={{ fill: BRAND.navy, fontSize: 12 }} />
-                        <YAxis tickFormatter={(v) => `${v}%`} tickLine={false} axisLine={false} tick={{ fill: BRAND.navy, fontSize: 12 }} />
-                        <Tooltip content={<MinimalTooltip />} />
-                        <ReferenceLine y={0} stroke={BRAND.gray} strokeDasharray="3 3" />
-                        <Line type="monotone" dataKey="variacion" name="Variación" stroke={BRAND.purple} strokeWidth={2.5} dot={{ r: 4, fill: "#111111" }} />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </ChartBlock>
-
-                  <ChartExplanation title="Qué indica la variación mensual">
-                    <p>
-                      Este gráfico muestra cuánto cambió la venta de un mes al siguiente. Febrero creció {percent(57.5)} frente a enero; marzo cayó {percent(32.6)} frente a febrero; abril volvió a crecer {percent(24.7)}; mayo creció {percent(2.6)} frente a abril.
-                    </p>
-                    <p>
-                      La lectura no debe ser “todo está estable”, sino más precisa: hay oscilación, pero el promedio mensual no se destruye. El movimiento se mantiene alrededor de una base aproximada de {money(summary.promedioMensual)}.
-                    </p>
-                  </ChartExplanation>
+              <div>
+                <div class="chart-wrapper">
+                  <canvas id="dailySignalChart"></canvas>
                 </div>
 
-                <div>
-                  <ChartBlock>
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={dailySignal} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                        <CartesianGrid stroke={BRAND.light} vertical={false} />
-                        <XAxis dataKey="indicador" tickLine={false} axisLine={false} tick={{ fill: BRAND.navy, fontSize: 12 }} />
-                        <YAxis tickFormatter={(v) => `$${v}`} tickLine={false} axisLine={false} tick={{ fill: BRAND.navy, fontSize: 12 }} />
-                        <Tooltip content={<MinimalTooltip />} cursor={{ fill: "#DFE4EA" }} />
-                        <Bar name="Valor" dataKey="valor" fill={BRAND.navy} radius={[2, 2, 0, 0]} />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </ChartBlock>
-
-                  <ChartExplanation title="Por qué el día a día es más irregular">
-                    <p>
-                      El promedio por día activo fue {money(summary.promedioDiaActivo)}, pero la mediana fue solo {money(summary.medianaDiaActivo)}. Cuando el promedio está mucho más alto que la mediana, normalmente significa que algunos días fuertes elevan el resultado general.
-                    </p>
-                    <p>
-                      El día más alto llegó a {money(308.5)}. Ese dato pesa mucho dentro de una cooperativa con ventas diarias normalmente pequeñas.
-                    </p>
-                    <p>
-                      El coeficiente de variación diario fue {percent(summary.cvDiario)}, bastante más alto que el mensual. Por eso la lectura correcta es: por mes hay cierta base; por día hay mucha dependencia de ventas puntuales.
-                    </p>
-                  </ChartExplanation>
-                </div>
+                <details>
+                  <summary>Por qué el día a día es más irregular <span class="plus">+</span></summary>
+                  <div class="details-content">
+                    <p>El promedio por día activo fue $61.07, pero la mediana fue solo $32.50. Cuando el promedio está mucho más alto que la mediana, normalmente significa que algunos días fuertes elevan el resultado general.</p>
+                    <p>El día más alto llegó a $308.50. Ese dato pesa mucho dentro de una cooperativa con ventas diarias normalmente pequeñas.</p>
+                    <p>El coeficiente de variación diario fue 115.1%, bastante más alto que el mensual. Por eso la lectura correcta es: por mes hay cierta base; por día hay mucha dependencia de ventas puntuales.</p>
+                  </div>
+                </details>
               </div>
-            </section>
+            </div>
+          </article>
 
-            <section>
-              <SectionTitle
-                eyebrow="Síntesis numérica"
-                title="Lo esencial en cuatro datos"
-                text="Estos indicadores resumen la posición comercial sin llenar la pantalla de bloques innecesarios."
-              />
-
-              <div className="grid gap-8 md:grid-cols-2 xl:grid-cols-4">
-                <Metric
-                  label="Concentración top 2"
-                  value={percent(summary.top2Participacion)}
-                  note="Paños y prendas generan más de la mitad del ingreso."
-                />
-                <Metric
-                  label="Tickets mayores a $20"
-                  value={percent(summary.ventaMayor20Participacion)}
-                  note="Casi seis de cada diez dólares vienen de tickets medios-altos."
-                />
-                <Metric
-                  label="Mejor mes"
-                  value={bestMonth.mes}
-                  note={`Ventas de ${money(bestMonth.ventas)}.`}
-                />
-                <Metric
-                  label="Neto de enero"
-                  value={money(summary.netoEnero)}
-                  note={`Gasto registrado: ${money(summary.gastoEnero)}.`}
-                />
+          <article class="section">
+            <div class="section-header">
+              <div>
+                <p class="eyebrow">Síntesis numérica</p>
+                <h2 class="section-title">Lo esencial en cuatro datos</h2>
+                <p class="section-text">Estos indicadores resumen la posición comercial sin llenar la pantalla de bloques innecesarios.</p>
               </div>
-            </section>
-          </motion.div>
-        )}
-        </div>
+            </div>
 
-        <footer className="mt-16 border-t border-[#B8BEC4] pt-6 text-sm leading-7 text-[#100135]/70">
-          <span className="font-bold text-[#100135]">Lectura ejecutiva:</span> ACOPANCHI tiene una base mensual aproximada de {money(summary.promedioMensual)}, depende principalmente de paños y prendas, y obtiene más ingreso de tickets superiores a $20 que de productos pequeños. La señal diaria es más irregular que la mensual.
-        </footer>
+            <div class="metrics-grid">
+              <article class="metric">
+                <p class="metric-label">Concentración top 2</p>
+                <p class="metric-value">53.2%</p>
+                <p class="metric-note">Paños y prendas generan más de la mitad del ingreso.</p>
+              </article>
 
-        <div className="mt-10 flex justify-end pb-2">
-          <img src={LOGO_ARMANDO} alt="Armando" className="h-16 w-auto md:h-20" />
-        </div>
+              <article class="metric">
+                <p class="metric-label">Tickets mayores a $20</p>
+                <p class="metric-value">59.4%</p>
+                <p class="metric-note">Casi seis de cada diez dólares vienen de tickets medios-altos.</p>
+              </article>
+
+              <article class="metric">
+                <p class="metric-label">Mejor mes</p>
+                <p class="metric-value">Febrero</p>
+                <p class="metric-note">Ventas de $500.50.</p>
+              </article>
+
+              <article class="metric">
+                <p class="metric-label">Neto de enero</p>
+                <p class="metric-value">$129.75</p>
+                <p class="metric-note">Gasto registrado: $188.00.</p>
+              </article>
+            </div>
+          </article>
+        </section>
       </div>
-    </main>
-  );
-}
+
+      <footer>
+        <strong>Lectura ejecutiva:</strong> ACOPANCHI tiene una base mensual aproximada de $401.72, depende principalmente de paños y prendas, y obtiene más ingreso de tickets superiores a $20 que de productos pequeños. La señal diaria es más irregular que la mensual.
+      </footer>
+
+      <div class="logo-footer">
+        <img src="https://res.cloudinary.com/dul66qlpq/image/upload/v1758995973/logo_armando_pug17v.svg" alt="Armando" />
+      </div>
+    </div>
+  </main>
+
+  <script>
+    const BRAND = {
+      navy: "#100135",
+      purple: "#640FEA",
+      green: "#0FFC7E",
+      light: "#DFE4EA",
+      gray: "#B8BEC4",
+      black: "#000000",
+      white: "#FFFFFF",
+    };
+
+    const money = (value) => new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+      minimumFractionDigits: 2,
+    }).format(value);
+
+    const monthlySales = [
+      { mes: "Enero", ventas: 317.75, variacion: null },
+      { mes: "Febrero", ventas: 500.5, variacion: 57.5 },
+      { mes: "Marzo", ventas: 337.5, variacion: -32.6 },
+      { mes: "Abril", ventas: 420.95, variacion: 24.7 },
+      { mes: "Mayo*", ventas: 431.9, variacion: 2.6 },
+    ];
+
+    const categorySales = [
+      { categoria: "Paño pancho / paños", ventas: 543, participacion: 27.0 },
+      { categoria: "Prendas", ventas: 526, participacion: 26.2 },
+      { categoria: "Bolsos / bolsitas", ventas: 217, participacion: 10.8 },
+      { categoria: "Caminos de mesa", ventas: 189, participacion: 9.4 },
+      { categoria: "Individuales / manteles", ventas: 160, participacion: 8.0 },
+      { categoria: "Comisión por venta de socias", ventas: 106.35, participacion: 5.3 },
+    ];
+
+    const priceRanges = [
+      { rango: "$0-$5", transacciones: 58, ventas: 184.1, participacion: 9.2 },
+      { rango: "$5.01-$10", transacciones: 31, ventas: 245, participacion: 12.2 },
+      { rango: "$10.01-$20", transacciones: 24, ventas: 385.5, participacion: 19.2 },
+      { rango: "$20.01-$35", transacciones: 28, ventas: 782, participacion: 38.9 },
+      { rango: "+$35", transacciones: 7, ventas: 412, participacion: 20.5 },
+    ];
+
+    const dailySignal = [
+      { indicador: "Promedio", valor: 61.07 },
+      { indicador: "Mediana", valor: 32.5 },
+      { indicador: "Día más alto", valor: 308.5 },
+    ];
+
+    Chart.defaults.font.family = "Lato, Arial, sans-serif";
+    Chart.defaults.color = BRAND.navy;
+    Chart.defaults.borderColor = BRAND.light;
+
+    const baseOptions = {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: BRAND.white,
+          titleColor: BRAND.navy,
+          bodyColor: BRAND.navy,
+          borderColor: BRAND.light,
+          borderWidth: 1,
+          padding: 12,
+          displayColors: false,
+          callbacks: {
+            label: (context) => {
+              const value = context.raw;
+              const label = context.dataset.label || "Valor";
+              if (label.toLowerCase().includes("transacciones")) return `${label}: ${value}`;
+              if (label.toLowerCase().includes("variación")) return `${label}: ${Number(value).toFixed(1)}%`;
+              return `${label}: ${money(value)}`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: BRAND.navy } },
+        y: { grid: { color: BRAND.light }, ticks: { color: BRAND.navy } }
+      }
+    };
+
+    const averageLinePlugin = {
+      id: "averageLine",
+      afterDraw(chart, args, options) {
+        if (!options || typeof options.value !== "number") return;
+        const { ctx, chartArea, scales } = chart;
+        const y = scales.y.getPixelForValue(options.value);
+
+        ctx.save();
+        ctx.setLineDash([6, 6]);
+        ctx.strokeStyle = BRAND.purple;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(chartArea.left, y);
+        ctx.lineTo(chartArea.right, y);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = BRAND.purple;
+        ctx.font = "700 12px Lato";
+        ctx.fillText("Promedio", chartArea.right - 62, y - 8);
+        ctx.restore();
+      }
+    };
+
+    Chart.register(averageLinePlugin);
+
+    function createCharts() {
+      new Chart(document.getElementById("monthlySalesChart"), {
+        type: "bar",
+        data: {
+          labels: monthlySales.map(item => item.mes),
+          datasets: [{
+            label: "Ventas",
+            data: monthlySales.map(item => item.ventas),
+            backgroundColor: BRAND.navy,
+            borderRadius: 2,
+          }]
+        },
+        options: {
+          ...baseOptions,
+          plugins: {
+            ...baseOptions.plugins,
+            averageLine: { value: 401.72 }
+          },
+          scales: {
+            ...baseOptions.scales,
+            y: {
+              ...baseOptions.scales.y,
+              ticks: { color: BRAND.navy, callback: value => `$${value}` }
+            }
+          }
+        }
+      });
+
+      new Chart(document.getElementById("incomeTypeChart"), {
+        type: "doughnut",
+        data: {
+          labels: ["Producto / servicio", "Comisión por venta de socias"],
+          datasets: [{
+            data: [1902.25, 106.35],
+            backgroundColor: [BRAND.navy, BRAND.green],
+            borderColor: BRAND.white,
+            borderWidth: 3,
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          cutout: "62%",
+          plugins: {
+            legend: {
+              position: "bottom",
+              labels: { color: BRAND.navy, font: { family: "Lato", weight: "700" } }
+            },
+            tooltip: baseOptions.plugins.tooltip,
+          }
+        }
+      });
+
+      new Chart(document.getElementById("categorySalesChart"), {
+        type: "bar",
+        data: {
+          labels: categorySales.map(item => item.categoria),
+          datasets: [{
+            label: "Ventas",
+            data: categorySales.map(item => item.ventas),
+            backgroundColor: BRAND.navy,
+            borderRadius: 2,
+          }]
+        },
+        options: {
+          ...baseOptions,
+          indexAxis: "y",
+          scales: {
+            x: {
+              grid: { color: BRAND.light },
+              ticks: { color: BRAND.navy, callback: value => `$${value}` }
+            },
+            y: {
+              grid: { display: false },
+              ticks: { color: BRAND.purple, font: { size: 12 } }
+            }
+          }
+        }
+      });
+
+      new Chart(document.getElementById("priceRangeAreaChart"), {
+        type: "line",
+        data: {
+          labels: priceRanges.map(item => item.rango),
+          datasets: [{
+            label: "Ventas",
+            data: priceRanges.map(item => item.ventas),
+            borderColor: BRAND.purple,
+            backgroundColor: "rgba(223, 228, 234, 0.7)",
+            fill: true,
+            tension: 0.35,
+            pointRadius: 4,
+            pointBackgroundColor: BRAND.purple,
+          }]
+        },
+        options: {
+          ...baseOptions,
+          scales: {
+            ...baseOptions.scales,
+            y: {
+              ...baseOptions.scales.y,
+              ticks: { color: BRAND.navy, callback: value => `$${value}` }
+            }
+          }
+        }
+      });
+
+      new Chart(document.getElementById("transactionVsIncomeChart"), {
+        type: "bar",
+        data: {
+          labels: priceRanges.map(item => item.rango),
+          datasets: [
+            {
+              label: "Transacciones",
+              data: priceRanges.map(item => item.transacciones),
+              backgroundColor: BRAND.gray,
+              borderRadius: 2,
+              yAxisID: "yTransactions",
+            },
+            {
+              label: "Ventas",
+              data: priceRanges.map(item => item.ventas),
+              backgroundColor: BRAND.navy,
+              borderRadius: 2,
+              yAxisID: "ySales",
+            }
+          ]
+        },
+        options: {
+          ...baseOptions,
+          plugins: {
+            ...baseOptions.plugins,
+            legend: {
+              display: true,
+              position: "bottom",
+              labels: { color: BRAND.navy, font: { family: "Lato", weight: "700" } }
+            }
+          },
+          scales: {
+            x: { grid: { display: false }, ticks: { color: BRAND.navy } },
+            yTransactions: {
+              position: "left",
+              grid: { color: BRAND.light },
+              ticks: { color: BRAND.navy }
+            },
+            ySales: {
+              position: "right",
+              grid: { drawOnChartArea: false },
+              ticks: { color: BRAND.navy, callback: value => `$${value}` }
+            }
+          }
+        }
+      });
+
+      new Chart(document.getElementById("monthlyVariationChart"), {
+        type: "line",
+        data: {
+          labels: monthlySales.filter(item => item.variacion !== null).map(item => item.mes),
+          datasets: [{
+            label: "Variación",
+            data: monthlySales.filter(item => item.variacion !== null).map(item => item.variacion),
+            borderColor: BRAND.purple,
+            backgroundColor: BRAND.purple,
+            tension: 0.35,
+            pointRadius: 5,
+            pointBackgroundColor: BRAND.navy,
+            fill: false,
+          }]
+        },
+        options: {
+          ...baseOptions,
+          scales: {
+            ...baseOptions.scales,
+            y: {
+              ...baseOptions.scales.y,
+              ticks: { color: BRAND.navy, callback: value => `${value}%` }
+            }
+          }
+        }
+      });
+
+      new Chart(document.getElementById("dailySignalChart"), {
+        type: "bar",
+        data: {
+          labels: dailySignal.map(item => item.indicador),
+          datasets: [{
+            label: "Valor",
+            data: dailySignal.map(item => item.valor),
+            backgroundColor: BRAND.navy,
+            borderRadius: 2,
+          }]
+        },
+        options: {
+          ...baseOptions,
+          scales: {
+            ...baseOptions.scales,
+            y: {
+              ...baseOptions.scales.y,
+              ticks: { color: BRAND.navy, callback: value => `$${value}` }
+            }
+          }
+        }
+      });
+    }
+
+    function renderCategoryTable() {
+      const table = document.getElementById("categoryTable");
+      table.innerHTML = categorySales.map(item => `
+        <div class="data-row">
+          <div>
+            <p class="data-row-name">${item.categoria}</p>
+            <p class="data-row-note">${item.participacion.toFixed(1)}% del ingreso</p>
+          </div>
+          <p class="data-row-value">${money(item.ventas)}</p>
+        </div>
+      `).join("");
+    }
+
+    function setupTabs() {
+      const buttons = document.querySelectorAll(".tab-button");
+      const views = document.querySelectorAll(".view");
+      const content = document.getElementById("content");
+
+      buttons.forEach(button => {
+        button.addEventListener("click", () => {
+          const target = button.dataset.view;
+
+          buttons.forEach(item => item.classList.remove("active"));
+          button.classList.add("active");
+
+          views.forEach(view => {
+            view.classList.toggle("active", view.id === target);
+          });
+
+          window.setTimeout(() => {
+            content.scrollIntoView({ behavior: "smooth", block: "start" });
+          }, 80);
+        });
+      });
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      renderCategoryTable();
+      setupTabs();
+      createCharts();
+    });
+  </script>
+</body>
+</html>
